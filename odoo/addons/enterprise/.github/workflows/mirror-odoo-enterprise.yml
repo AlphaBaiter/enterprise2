@@ -15,28 +15,34 @@ jobs:
     env:
       ODOO_BRANCH: 19.0
       UPSTREAM_URL: https://github.com/odoo/enterprise.git
+      UPSTREAM_PAT: ${{ secrets.UPSTREAM_PAT }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ env.ODOO_BRANCH }}
 
       - name: Validate UPSTREAM_PAT has repo access
-        env:
-          UPSTREAM_PAT: ${{ secrets.UPSTREAM_PAT }}
+        id: validate
         run: |
           set -euo pipefail
-          test -n "${UPSTREAM_PAT}" || { echo "UPSTREAM_PAT is not set"; exit 1; }
+          if [ -z "${UPSTREAM_PAT:-}" ]; then
+            echo "can_access=false" >> "$GITHUB_OUTPUT"
+            echo "UPSTREAM_PAT is not set; skipping."
+            exit 0
+          fi
           code=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${UPSTREAM_PAT}" \
             https://api.github.com/repos/odoo/enterprise)
-          if [ "$code" != "200" ]; then
-            echo "Token cannot access odoo/enterprise (HTTP $code). Check repo access/SSO/owner." >&2
-            exit 1
+          if [ "$code" = "200" ]; then
+            echo "can_access=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_access=false" >> "$GITHUB_OUTPUT"
+            echo "Token cannot access odoo/enterprise (HTTP $code). Skipping." >&2
           fi
 
       - name: Fetch upstream branch
-        env:
-          UPSTREAM_PAT: ${{ secrets.UPSTREAM_PAT }}
+        if: steps.validate.outputs.can_access == 'true'
         run: |
           set -euo pipefail
           git remote add upstream "${UPSTREAM_URL}" || true
@@ -48,6 +54,7 @@ jobs:
           #   fetch --prune --tags upstream "+refs/tags/*:refs/tags/*"
 
       - name: Fast-forward fork branch and push
+        if: steps.validate.outputs.can_access == 'true'
         run: |
           set -euo pipefail
           TARGET="${ODOO_BRANCH}"   # or vendor/${ODOO_BRANCH}
