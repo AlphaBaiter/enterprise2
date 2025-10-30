@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Helpdesk Ticket Tree View -->
+        <record id="helpdesk_custom_view_helpdesk_ticket_tree" model="ir.ui.view">
+            <field name="name">helpdesk.ticket.tree</field>
+            <field name="model">helpdesk.ticket</field>
+            <field name="type">list</field>
+            <field name="arch" type="xml">
+                <list string="Helpdesk Tickets" decoration-info="kanban_state == 'normal'" decoration-warning="kanban_state == 'blocked'">
+                    <field name="ticket_ref" string="ID" readonly="1"/>
+                    <field name="name"/>
+                    <field name="category_id"/>
+                    <field name="partner_id"/>
+                    <field name="user_id"/>
+                    <field name="create_date" readonly="1" string="Creation Date"/>
+                    <field name="priority" widget="priority"/>
+                    <field name="stage_id" widget="badge" decoration-success="kanban_state == 'done'" decoration-info="fold"/>
+                    <field name="sla_deadline" widget="remaining_days" string="SLA Deadline"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Admin-specific override removed: use group attributes on fields instead -->
+
+        <!-- Helpdesk Ticket Form View - Inherit from base helpdesk form -->
+        <record id="helpdesk_custom_view_helpdesk_ticket_form" model="ir.ui.view">
+            <field name="name">helpdesk.ticket.form.inherit</field>
+            <field name="model">helpdesk.ticket</field>
+            <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='user_id']" position="attributes">
+                    <attribute name="domain">[]</attribute>
+                </xpath>
+                <xpath expr="//field[@name='user_id']" position="after">
+                    <field name="allowed_user_ids" invisible="1" readonly="1"/>
+                </xpath>
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="branch_id" domain="[('id','child_of', company_id)]" invisible="1"/>
+                    <field name="category_id" required="1" invisible="1"/>
+                </xpath>
+                <!-- Place Branch and Category on the left column before Priority -->
+                <xpath expr="//group[.//field[@name='team_id']]/field[@name='priority']" position="before">
+                    <field name="branch_id" domain="['|', ('id','child_of', company_id), ('id', '=', company_id)]" context="{'display_company_registry_name': True}"/>
+                    <field name="category_id" required="1"/>
+                </xpath>
+                <!-- Move Helpdesk Team, Assign To and Tags to the right column (after Customer) -->
+                <xpath expr="//group[.//field[@name='partner_id']]/field[@name='partner_id']" position="after">
+                    <field name="team_id"/>
+                    <field name="user_id"/>
+                    <field name="tag_ids" widget="many2many_tags"/>
+                </xpath>
+                <!-- Show SLA policies on the form: admin editable, others read-only -->
+                <xpath expr="//group[.//field[@name='partner_id']]/field[@name='tag_ids']" position="after">
+                    <field name="sla_ids" widget="many2many_tags" options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
+                </xpath>
+
+                <!-- Readonly rules per group without duplicating fields -->
+                <xpath expr="//field[@name='team_id']" position="attributes" groups="helpdesk.group_helpdesk_user">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='user_id']" position="attributes" groups="helpdesk.group_helpdesk_user">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='sla_ids']" position="attributes" groups="helpdesk.group_helpdesk_user">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='team_id']" position="attributes" groups="helpdesk.group_helpdesk_manager,base.group_system">
+                    <attribute name="readonly">0</attribute>
+                </xpath>
+                <xpath expr="//field[@name='user_id']" position="attributes" groups="helpdesk.group_helpdesk_manager,base.group_system">
+                    <attribute name="readonly">0</attribute>
+                </xpath>
+                <xpath expr="//field[@name='sla_ids']" position="attributes" groups="helpdesk.group_helpdesk_manager,base.group_system">
+                    <attribute name="readonly">0</attribute>
+                </xpath>
+                <!-- Hide original placements to avoid duplicates -->
+                <xpath expr="//group[.//field[@name='team_id']]/field[@name='tag_ids']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath expr="//group[.//field[@name='team_id']]/field[@name='team_id']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath expr="//group[.//field[@name='team_id']]/field[@name='user_id']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath expr="//group[.//field[@name='team_id']]/field[@name='sla_ids']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <!-- Make Branch required on the left column instance -->
+                <xpath expr="//group[.//field[@name='team_id']]/field[@name='branch_id']" position="attributes">
+                    <attribute name="required">0</attribute>
+                    <attribute name="domain">['|', ('id','child_of', company_id), ('id', '=', company_id)]</attribute>
+                    <attribute name="context">{'display_company_registry_name': True}</attribute>
+                </xpath>
+
+                <!-- (Readonly handled by group-specific duplicates above) -->
+                <!-- Hide Customer and Email CC fields -->
+                <xpath expr="//field[@name='partner_id']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='email_cc']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <!-- Hide customer phone on the ticket form -->
+                <xpath expr="//label[@for='partner_phone']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='partner_phone']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath expr="//notebook/page[@name='description']" position="after">
+                    <page string="Media">
+                        <field name="media_attachment_ids" widget="many2many_binary" class="o_media_preview" options="{'acceptedFileExtensions': '.png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.avi'}"/>
+                    </page>
+                </xpath>
+                <!-- Insert Vendor into existing Extra Info tab from base/enterprise -->
+                <xpath expr="//page[@name='extra_info']/group" position="inside">
+                    <field name="vendor_id" options="{'no_create_edit': True}"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Quick Create Ticket Form - restrict to Branch, Priority, Category, Description -->
+        <record id="helpdesk_custom_view_helpdesk_ticket_quick_create" model="ir.ui.view">
+            <field name="name">helpdesk.ticket.form.quick_create.inherit.minimal_fields</field>
+            <field name="model">helpdesk.ticket</field>
+            <field name="inherit_id" ref="helpdesk.quick_create_ticket_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//form/*" position="replace">
+                    <group>
+                        <field name="name" required="1"/>
+                        <field name="branch_id" required="1" domain="['|', ('id','child_of', company_id), ('id', '=', company_id)]" context="{'display_company_registry_name': True}"/>
+                        <field name="priority" widget="priority"/>
+                        <field name="category_id" required="1" options="{'no_open': True}"/>
+                        <field name="description"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Helpdesk Ticket Search View -->
+        <record id="helpdesk_custom_view_helpdesk_ticket_search" model="ir.ui.view">
+            <field name="name">helpdesk.ticket.search</field>
+            <field name="model">helpdesk.ticket</field>
+            <field name="arch" type="xml">
+                <search>
+                    <filter string="New" name="new" domain="[('kanban_state', '=', 'normal')]"/>
+                    <filter string="Blocked" name="blocked" domain="[('kanban_state', '=', 'blocked')]"/>
+                    <filter string="Done" name="done" domain="[('kanban_state', '=', 'done')]"/>
+                    <filter string="Closed" name="closed" domain="[('fold', '=', True)]"/>
+                    <filter string="High Priority" name="high_priority" domain="[('priority', 'in', ['2', '3'])]"/>
+                    <filter string="My Tickets" name="my_tickets" domain="[('user_id', '=', uid)]"/>
+                    <group>
+                        <filter string="Category" name="category" context="{'group_by': 'category_id'}"/>
+                        <filter string="Assigned to" name="user" context="{'group_by': 'user_id'}"/>
+                        <filter string="Customer" name="partner" context="{'group_by': 'partner_id'}"/>
+                        <filter string="Stage" name="stage" context="{'group_by': 'stage_id'}"/>
+                        <filter string="Priority" name="priority" context="{'group_by': 'priority'}"/>
+                        <filter string="Creation Date" name="create_date" context="{'group_by': 'create_date:day'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Helpdesk Ticket Action -->
+        <record id="helpdesk_custom_action_helpdesk_ticket" model="ir.actions.act_window">
+            <field name="name">Helpdesk Tickets</field>
+            <field name="res_model">helpdesk.ticket</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="helpdesk_custom_view_helpdesk_ticket_search"/>
+            <field name="context">{'search_default_new': 1, 'display_company_registry_name': True}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create a new helpdesk ticket
+                </p>
+                <p>
+                    Helpdesk tickets help you track and manage customer support requests.
+                    You can assign tickets to team members and organize them by categories.
+                </p>
+            </field>
+        </record>
+
+        <!-- Inherit base Helpdesk list (All Tickets) to add Category column -->
+        <record id="helpdesk_custom_view_helpdesk_ticket_tree_inherit" model="ir.ui.view">
+            <field name="name">helpdesk.ticket.list.inherit.category</field>
+            <field name="model">helpdesk.ticket</field>
+            <field name="inherit_id" ref="helpdesk.helpdesk_tickets_view_tree"/>
+            <field name="arch" type="xml">
+                <!-- Ensure default behavior (click row opens form) by keeping list non-editable -->
+                <!-- Add tooltip icon before the first field in the list -->
+                <xpath expr="//list/field[1]" position="before">
+                    <field name="preview_compact" string="" optional="show" class="o_helpdesk_preview_compact"/>
+                </xpath>
+                <!-- (Skip reordering/adding base fields to avoid xpath mismatches across versions) -->
+                <!-- Re-add Media HTML column for image hover (like original) -->
+                <xpath expr="//list" position="inside">
+                    <field name="preview_uid" invisible="1"/>
+                    <field name="media_preview_html" widget="html" string="Media" class="o_media_preview" optional="show"/>
+                </xpath>
+                <!-- Show Branch (name-registry) before Priority using branch_id with context -->
+                <xpath expr="//list/field[@name='priority']" position="before">
+                    <field name="branch_id" string="Branch" optional="show" context="{'display_company_registry_name': True}"/>
+                </xpath>
+                <!-- Ensure Category column is visible in base list -->
+                <xpath expr="//list/field[@name='partner_id']" position="after">
+                    <field name="category_id" optional="show"/>
+                </xpath>
+                
+            </field>
+        </record>
+
+        
+    </data>
+</odoo>
