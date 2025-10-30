@@ -13,6 +13,7 @@ jobs:
     env:
       UPSTREAM_URL: https://github.com/odoo/enterprise.git
       TARGET_URL: https://github.com/AlphaBaiter/enterprise.git
+      ODOO_BRANCH: 19.0
     steps:
       - name: Prepare auth-safe remotes
         run: |
