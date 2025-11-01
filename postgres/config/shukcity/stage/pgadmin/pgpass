@@ -1,0 +1,3 @@
+*:5432:*:odoo:odoo
+db:5432:*:odoo:odoo
+db:5432:stage_shukcity_db:odoo:odoo

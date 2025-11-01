@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "dev-shukcity-db",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "dev_shukcity_db",
+      "Username": "odoo",
+      "SSLMode": "prefer",
+      "PassFile": "/pgadmin4/pgpass"
+    }
+  }
+}
