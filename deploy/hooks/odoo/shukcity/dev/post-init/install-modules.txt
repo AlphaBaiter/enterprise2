@@ -1,7 +1,0 @@
-# Default Odoo modules to install on init -e dev
-# - One per line, comments allowed with '#'
-# - You can also separate by commas or spaces
-
-helpdesk
-helpdesk_custom
-
